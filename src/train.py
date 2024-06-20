@@ -10,7 +10,19 @@ def compute_regularization(model, lambda_reg):
         reg_loss += torch.sum(param**2)
     return lambda_reg * reg_loss
 
-def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate, lambda_reg, clip_value, verbose):
+def validate_model(model, val_loader):
+    model.eval()
+    val_loss = 0.0
+    criterion = nn.MSELoss()
+    with torch.no_grad():
+        for inputs, targets in val_loader:
+            inputs, targets = inputs.to(model.device), targets.to(model.device)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            val_loss += loss.item()
+    return val_loss / len(val_loader)
+
+def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate, lambda_reg, clip_value, verbose, accumulation_steps=1):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     best_val_loss = float('inf')
@@ -19,31 +31,29 @@ def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0.0
-        for inputs, targets in train_loader:
+        optimizer.zero_grad()
+        
+        for i, (inputs, targets) in enumerate(train_loader):
+            inputs, targets = inputs.to(model.device), targets.to(model.device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             reg_loss = compute_regularization(model, lambda_reg)
             total_loss = loss + reg_loss
             
-            optimizer.zero_grad()
             total_loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
-            optimizer.step()
+            
+            if (i + 1) % accumulation_steps == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
+                optimizer.step()
+                optimizer.zero_grad()
             
             epoch_loss += total_loss.item()
         
         train_losses.append(epoch_loss / len(train_loader))
         
         # Validation
-        model.eval()
-        val_loss = 0.0
-        with torch.no_grad():
-            for inputs, targets in val_loader:
-                outputs = model(inputs)
-                loss = criterion(outputs, targets)
-                val_loss += loss.item()
-        
-        val_losses.append(val_loss / len(val_loader))
+        val_loss = validate_model(model, val_loader)
+        val_losses.append(val_loss)
 
         if verbose:
             print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}')
