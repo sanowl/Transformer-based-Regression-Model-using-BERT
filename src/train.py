@@ -1,4 +1,3 @@
-# train.py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,27 +14,28 @@ def validate_model(model, val_loader):
     val_loss = 0.0
     criterion = nn.MSELoss()
     with torch.no_grad():
-        for inputs, targets in val_loader:
-            inputs, targets = inputs.to(model.device), targets.to(model.device)
-            outputs = model(inputs)
+        for inputs, attention_mask, targets in val_loader:
+            inputs, attention_mask, targets = inputs.to(model.device), attention_mask.to(model.device), targets.to(model.device)
+            outputs = model(inputs, attention_mask)
             loss = criterion(outputs, targets)
             val_loss += loss.item()
     return val_loss / len(val_loader)
 
-def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate, lambda_reg, clip_value, verbose, accumulation_steps=1):
+def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate, lambda_reg, clip_value, verbose, accumulation_steps=1, early_stopping_patience=10):
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     best_val_loss = float('inf')
     train_losses, val_losses = [], []
+    patience = 0
 
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0.0
         optimizer.zero_grad()
         
-        for i, (inputs, targets) in enumerate(train_loader):
-            inputs, targets = inputs.to(model.device), targets.to(model.device)
-            outputs = model(inputs)
+        for i, (inputs, attention_mask, targets) in enumerate(train_loader):
+            inputs, attention_mask, targets = inputs.to(model.device), attention_mask.to(model.device), targets.to(model.device)
+            outputs = model(inputs, attention_mask)
             loss = criterion(outputs, targets)
             reg_loss = compute_regularization(model, lambda_reg)
             total_loss = loss + reg_loss
@@ -61,7 +61,13 @@ def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate
         # Early Stopping
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), 'best_model.pth')  # Ensure this filename is consistent
+            patience = 0
+        else:
+            patience += 1
+            if patience >= early_stopping_patience:
+                print("Early stopping triggered")
+                break
 
     # Plotting loss curves
     plt.figure()
@@ -70,4 +76,5 @@ def train_transformer(model, train_loader, val_loader, num_epochs, learning_rate
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.show()
+    plt.savefig('training_validation_loss.png')  # Save the plot instead of showing it
+    plt.close()

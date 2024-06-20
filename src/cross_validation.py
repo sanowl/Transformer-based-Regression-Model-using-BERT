@@ -6,27 +6,28 @@ from prepare_data import prepare_data_for_transformer
 from transformers import BertTokenizer
 import torch
 from torch.utils.data import DataLoader, TensorDataset
+import matplotlib.pyplot as plt
 
 # Initialize the tokenizer and prepare the data
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-X_train, y_train, _, _ = prepare_data_for_transformer(tokenizer)
+X_train, attention_mask, y_train, _, _ = prepare_data_for_transformer(tokenizer)
 
-# Function to create data loaders for train and validation sets
 def data_loader_func(train_idx, val_idx):
     X_train_fold = X_train[train_idx]
+    attention_mask_fold = attention_mask[train_idx]
     y_train_fold = y_train[train_idx]
     X_val_fold = X_train[val_idx]
+    attention_mask_val_fold = attention_mask[val_idx]
     y_val_fold = y_train[val_idx]
     
-    train_dataset = TensorDataset(X_train_fold, y_train_fold)
-    val_dataset = TensorDataset(X_val_fold, y_val_fold)
+    train_dataset = TensorDataset(X_train_fold, attention_mask_fold, y_train_fold)
+    val_dataset = TensorDataset(X_val_fold, attention_mask_val_fold, y_val_fold)
     
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
     
     return train_loader, val_loader
 
-# Function to perform cross-validation
 def cross_validate_model(model_class, data_loader_func, k=5):
     kfold = KFold(n_splits=k, shuffle=True)
     fold_results = []
