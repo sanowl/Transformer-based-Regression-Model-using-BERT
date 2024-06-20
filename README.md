@@ -31,12 +31,12 @@ This project implements a regression model using the BERT transformer architectu
 python train.py --epochs 50 --learning_rate 2e-5 --lambda_reg 0.01 --clip_value 1.0 --early_stopping_patience 10
 
 
-## Evaluation
+# Evaluation
 
 - **Metrics**: Mean Absolute Error (MAE) and R-squared (R²).
 - **Results**: Achieved a test loss of 0.0133, MAE of 0.1046, and R² of 0.9983.
 
-### Evaluation Command
+## Evaluation Command
 
 ```bash
 python evaluate.py
