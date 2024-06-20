@@ -1,7 +1,5 @@
 
-
-```markdown
-# ShallowReLURegression
+# Transformer-based Regression Model using BERT
 
 ## Introduction
 
@@ -31,7 +29,7 @@ This project implements a regression model using the BERT transformer architectu
 
 ```bash
 python train.py --epochs 50 --learning_rate 2e-5 --lambda_reg 0.01 --clip_value 1.0 --early_stopping_patience 10
-```
+
 
 ## Evaluation
 
