@@ -35,7 +35,7 @@ def data_loader_func(train_idx, val_idx, batch_size=16):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
-    return train_loader, val_loader
+    return train_loader, val_hgloader
 
 def train_transformer_improved(model, train_loader, val_loader, num_epochs=10, learning_rate=1e-4, lambda_reg=0.01, clip_value=1.0, verbose=True, accumulation_steps=4):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
